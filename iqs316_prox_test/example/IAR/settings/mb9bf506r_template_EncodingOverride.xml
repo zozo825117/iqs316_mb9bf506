@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+
+<userOverrides>
+  <override>
+    <path>D:\GitHub\iqs316_mb9bf506\iqs316_prox_test\example\source\app\iqs316\iqs316_define.h</path>
+    <encoding>System</encoding>
+  </override>
+  <override>
+    <path>D:\GitHub\iqs316_mb9bf506\iqs316_prox_test\example\source\app\iqs316\lower level.c</path>
+    <encoding>System</encoding>
+  </override>
+  <override>
+    <path>D:\GitHub\iqs316_mb9bf506\iqs316_prox_test\example\source\app\iqs316\upper level IQS316.c</path>
+    <encoding>System</encoding>
+  </override>
+</userOverrides>
+
+
