@@ -104,11 +104,18 @@ extern "C"
 		*/
 #define PROX_RANGE 							 	1
 
+#define PROX_THRESHOLD_CH0				(0<<4)
+#define PROX_THRESHOLD_CH1				(0<<4)
+#define PROX_THRESHOLD_CH2				(2<<4)
+#define PROX_THRESHOLD_CH3				(2<<4)
+
+
+/*
 #define PROX_THRESHOLD_CH0				(2<<4)
 #define PROX_THRESHOLD_CH1				(2<<4)
 #define PROX_THRESHOLD_CH2				(2<<4)
 #define PROX_THRESHOLD_CH3				(2<<4)
-
+*/
 
 /*
 UI Settings 0 (UI_SETTINGS0) C4H
