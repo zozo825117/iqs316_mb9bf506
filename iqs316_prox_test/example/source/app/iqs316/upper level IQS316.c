@@ -51,7 +51,8 @@ IQS316_debug_t Iqs316DebugInfo[IQS316_KEY_NUMBER];
 
 static int16_t last_delta=0;
 static uint8_t prox_chk_ok=0,time_up=0;
-static int8_t history_delta_buf[10],history_delta_ptr=0;
+static int8_t history_delta_buf[30],history_delta_ptr=0;
+static uint8_t prox_release=0;
 
 
 void iqs316_debug(void)
@@ -271,7 +272,7 @@ uint8_t ProxDetect(void)
 				}
 		}
 	history_delta_buf[history_delta_ptr++]=delta;
-	if(history_delta_ptr>9)
+	if(history_delta_ptr>=30)
 		{
 			history_delta_ptr=0;
 		}
@@ -287,11 +288,15 @@ uint8_t ProxDetect(void)
 		 	}
 		 else
 		 	{
-		 	  if(delta>=(last_delta + PM_INC_THRESHOLD))
+		 	  if(delta>(last_delta + PM_CHK_MAX_THRESHOLD))
+		 	  	{
+		 	  		prox_chk_ok+=2;
+		 	  	}		 	
+		 	  else if(delta>(last_delta + PM_INC_THRESHOLD))
 		 	  	{
 		 	  		prox_chk_ok++;
 		 	  	}
-				else if(delta<=(last_delta - PM_INC_THRESHOLD))
+				else if(delta<(last_delta - PM_INC_THRESHOLD))
 					{
 						prox_chk_ok = 0;
 						
@@ -305,7 +310,7 @@ uint8_t ProxDetect(void)
 		 
 	   }
 
-		if(prox_chk_ok >= PM_CHK_CNT || delta > PM_CHK_MAX_THRESHOLD)
+		if(prox_chk_ok >= PM_CHK_CNT )  //|| delta > PM_CHK_MAX_THRESHOLD
 			{
 				rc = 1;
 			}
@@ -506,10 +511,8 @@ void Init_iqs316(void)
 */
 void IQS316_New_Conversion(void)
 {
-  uint8_t temp,temp_num, temp_flag,start_num=0, temp_touch, temp_prox, touch_detected=0,prox_detected=0;
-	uint8_t i=0,j=0;
-
-
+  uint8_t temp,temp_num, temp_flag,start_num=0, temp_touch, temp_prox;
+	uint8_t i=0,j=0,touch_detected=0,prox_detected=0;
 	
   #ifdef IQS316_DEBUG
 			  uint8_t ptr,buf[20];
@@ -579,6 +582,7 @@ void IQS316_New_Conversion(void)
 			{
 				case 0:
 					ptr = 0;
+					goto skip_stop;
 					break;
 					
 				case 1:
@@ -615,6 +619,7 @@ void IQS316_New_Conversion(void)
 			}
 		
 			CommsIQSxxx_stop();
+skip_stop:			
 #ifdef IQS316_DEBUG
 	    Iqs316DebugInfo[0+ptr].Lta = temp_lta_u.lta_word[0];
 	    Iqs316DebugInfo[1+ptr].Lta = temp_lta_u.lta_word[1];
@@ -659,12 +664,26 @@ void IQS316_New_Conversion(void)
 		*/   
 		if((temp_num ==0) && !(temp_flag&0x40))
 			{
-				if(ProxDetect())
+			  if(0==prox_release)
+			  	{
+						if(ProxDetect())
+							{
+								IQS316.prox_detected = 1;
+								prox_chk_ok = 0;
+								setTouchMode();
+							}
+						else
+							{
+								IQS316.prox_detected = 0;
+							}
+
+			  	}
+				else
 					{
-						IQS316.prox_detected = 1;
-						prox_chk_ok = 0;
-						setTouchMode();
+						prox_release--;
+						setChanReseed(CHAN_RESEED0,BIT1|BIT0);
 					}
+
 					
 			}
 		else if((0!=temp_num) && (temp_flag&0x40))
@@ -685,6 +704,8 @@ void IQS316_New_Conversion(void)
 							{
 								setProxMode();
                 setChanReseed(CHAN_RESEED0,BIT1|BIT0);
+								IQS316.prox_detected = 0;
+								prox_release = 1;
 							}
 					}
 			}

@@ -49,7 +49,7 @@ extern "C"
 /*
 	Prox check	increased threshold
 */
-#define PM_INC_THRESHOLD					 5	
+#define PM_INC_THRESHOLD					 0	
 /*
 	Prox check coutinuous count times
 */
@@ -102,10 +102,10 @@ extern "C"
 		0 = Lower range threshold set (value:2 3 4 6)
 		1 = Higher range threshold set (value:8 16 20 30)
 		*/
-#define PROX_RANGE 							 	1
+#define PROX_RANGE 							 	0
 
-#define PROX_THRESHOLD_CH0				(0<<4)
-#define PROX_THRESHOLD_CH1				(0<<4)
+#define PROX_THRESHOLD_CH0				(2<<4)
+#define PROX_THRESHOLD_CH1				(2<<4)
 #define PROX_THRESHOLD_CH2				(2<<4)
 #define PROX_THRESHOLD_CH3				(2<<4)
 
@@ -145,7 +145,7 @@ Bit 5-4:  HALT
 Bit 3: AUTO_ATI
 Bit 2-0:  CXDIV[2:0]
 */
-#define PROX_SETTINGS_1_DEF     (BIT4|BIT1)
+#define PROX_SETTINGS_1_DEF     (BIT7|BIT4|BIT1)
 
 /*
 ProxSense Module Settings 2 (PROX_SETTINGS_2) C7H

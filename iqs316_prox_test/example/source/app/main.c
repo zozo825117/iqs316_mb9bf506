@@ -123,10 +123,11 @@ void DT_QDU_IRQHandler(void)
     if(Vaule == 1000)
     {
         Vaule = 0;
-        USER_LED_PDOR |= USER_LED_MASK;
-        USER_LED_PDOR &= ~(0x1<<(led_index + 9));
-        led_index++;
-        if(led_index == 3) led_index = 0;
+        //USER_LED_PDOR |= USER_LED_MASK;
+        //USER_LED_PDOR &= ~(0x1<<(led_index + 9));
+        //led_index++;
+        //if(led_index == 3) led_index = 0;
+        USER_LED_PDOR ^= USER_LED3;
     }
     FM3_DTIM->TIMER1INTCLR = 1;
 }
@@ -300,10 +301,11 @@ void Process_Touch_Data(void){
 		if (IQS316.touch_detected == 1)
 		{ 								
 
-				
+			USER_LED_PDOR &=~ USER_LED2;  // on
 		} 	 
 		else
 		{
+			USER_LED_PDOR |= USER_LED2;	// off
 
 		} 
 		
@@ -324,15 +326,13 @@ void Process_Touch_Data(void){
 
 		last_min_key = IQS316.min_key;
 				
-		//check proximity and adjust lights/ PWM as necessary
-		if (IQS316.prox_detected > 0)
+		if (IQS316.prox_detected)
 		{ 	 
-
+			USER_LED_PDOR &=~ USER_LED1;	// on
 		} 	 
-		//if proximity off for long time - step down backlight if not already 100% off
-		else if (IQS316.prox_detected == 0)
+		else
 		{
-
+			USER_LED_PDOR |= USER_LED1; // off
 		} 			
 		
 } 	 
