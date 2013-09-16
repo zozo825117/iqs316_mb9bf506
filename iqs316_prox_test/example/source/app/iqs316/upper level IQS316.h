@@ -46,13 +46,11 @@ typedef struct {
 	uint8_t min_key;
 } IQS316_t; 
 
-#ifdef IQS316_DEBUG
 typedef struct { 
   uint16_t Lta;
   uint16_t CurtSample;
   int16_t Delta;  
-} IQS316_debug_t; 
-#endif
+} IQS316_chan_info_t; 
 
 
 //****************************************************************************
@@ -68,10 +66,6 @@ uint8_t CommsIQSxxx_Read_Next_Cont(void);
 uint8_t CommsIQSxxx_Read_Next_Stop(void);
 void CommsIQSxxx_Init_Conversion(void);
 void Comms_Error(void);
-#ifdef IQS316_DEBUG
-void iqs316_debug(void);
-void iqs316_debug2(void);
-#endif
 void CommsIQSxxx_Read_continuous(uint8_t read_addr ,uint8_t *data,uint8_t NoOfBytes);
 //****************************************************************************
 // ±‰¡ø…Í√˜ 

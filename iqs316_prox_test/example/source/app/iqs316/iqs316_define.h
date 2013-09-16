@@ -39,29 +39,33 @@ extern "C"
 //----------------------------------------------------
 //器件地址 */
 #define IQS316_ADDR 						0x74	
-  
-#define IQS316_DEBUG
 
-#define IQS316_KEY_NUMBER       16+4
+#define IQS316_TOUCH_NUMBER 		16
+#define IQS316_PROX_NUMBER 			4
+
+
+#define IQS316_KEY_NUMBER       (IQS316_TOUCH_NUMBER+IQS316_PROX_NUMBER)
 
 //#define IQS316_RAM_PROG					//Enable minimum mode
 
-/*
-	Prox check	increased threshold
-*/
-#define PM_INC_THRESHOLD					 0	
-/*
-	Prox check coutinuous count times
-*/
-#define PM_CHK_CNT								 5
+
 /*
 	touch check 	if no touch wait memont to back prox mode  suggest 4 second
 */
-#define TOUCH_CHK_CNT 						 40
+#define TOUCH_CHK_CNT 						 60
 /*
 	Prox check	 
 */
-#define PM_CHK_MAX_THRESHOLD			 10*2
+#define PM_CHK_MAX_THRESHOLD			 10
+/*
+touch detect
+*/
+#define TOUCH_MAX_THRESHOLD				 80
+/*
+none touch key
+*/
+#define NONE_KEY 									0xFF
+
 
 //----------------------------------------------------
 //设置寄存器默认值 */
@@ -74,16 +78,16 @@ extern "C"
 	0 = Lower range threshold set (value:1/32 1/16  2/16  3/16)
 	1 = Higher range threshold set (default:4/16 6/16  8/16  10/16)
 		*/
-#define TOUCH_RANGE								 1
+#define TOUCH_RANGE								 0
 
-#define TOUCH_THRESHOLD_CH4 			 (2<<6)
-#define TOUCH_THRESHOLD_CH5 			 (2<<6)
-#define TOUCH_THRESHOLD_CH6 			 (1<<6)
-#define TOUCH_THRESHOLD_CH7 			 (1<<6)
-#define TOUCH_THRESHOLD_CH8 			 (2<<6)
-#define TOUCH_THRESHOLD_CH9 			 (2<<6)
-#define TOUCH_THRESHOLD_CH10			 (2<<6)
-#define TOUCH_THRESHOLD_CH11			 (3<<6)
+#define TOUCH_THRESHOLD_CH4 			 (0<<6)
+#define TOUCH_THRESHOLD_CH5 			 (0<<6)
+#define TOUCH_THRESHOLD_CH6 			 (0<<6)
+#define TOUCH_THRESHOLD_CH7 			 (0<<6)
+#define TOUCH_THRESHOLD_CH8 			 (0<<6)
+#define TOUCH_THRESHOLD_CH9 			 (0<<6)
+#define TOUCH_THRESHOLD_CH10			 (0<<6)
+#define TOUCH_THRESHOLD_CH11			 (0<<6)
 #define TOUCH_THRESHOLD_CH12			 (2<<6)
 #define TOUCH_THRESHOLD_CH13			 (2<<6)
 #define TOUCH_THRESHOLD_CH14			 (2<<6)
@@ -102,12 +106,12 @@ extern "C"
 		0 = Lower range threshold set (value:2 3 4 6)
 		1 = Higher range threshold set (value:8 16 20 30)
 		*/
-#define PROX_RANGE 							 	0
+#define PROX_RANGE 							 	0  
 
 #define PROX_THRESHOLD_CH0				(2<<4)
 #define PROX_THRESHOLD_CH1				(2<<4)
-#define PROX_THRESHOLD_CH2				(2<<4)
-#define PROX_THRESHOLD_CH3				(2<<4)
+#define PROX_THRESHOLD_CH2				(0<<4)
+#define PROX_THRESHOLD_CH3				(0<<4)
 
 
 /*
@@ -141,11 +145,15 @@ Bit 0: Internal
 /*
 Bit 7: CXVSS
 Bit 6: ZC_EN
-Bit 5-4:  HALT
+Bit 5-4:  HALT:  LTA Filter Halt selections 
+ 							00 = Short (LTA filter halts for ~20 seconds, then reseeds) 
+ 							01 = Long (LTA filter halts for ~40 seconds, then reseeds) 
+ 							10 = Never (LTA filter never halts) 
+ 							11 = Always (LTA filter is halted permanently) 
 Bit 3: AUTO_ATI
 Bit 2-0:  CXDIV[2:0]
 */
-#define PROX_SETTINGS_1_DEF     (BIT7|BIT4|BIT1)
+#define PROX_SETTINGS_1_DEF     (BIT5|BIT1)//  
 
 /*
 ProxSense Module Settings 2 (PROX_SETTINGS_2) C7H
@@ -158,63 +166,73 @@ Bit 2: ACF_DISABLE
 Bit 1: LTN_DISABLE
 Bit 0: WDT_DISABLE:
 */
-#define PROX_SETTINGS_2_DEF     (BIT4|BIT0)
+#define PROX_SETTINGS_2_DEF     (BIT4|BIT1|BIT0)
 
 
 /*
 	AUTO ATI LEVELS  Prox
 */
-#define PROX_ATI_TARGET              2000
-#define PROX_ATI_TARGET_HI           ((PROX_ATI_TARGET>>8)&0x00ff)
-#define PROX_ATI_TARGET_LO           (PROX_ATI_TARGET&0x00ff)
+#define PROX_ATI_TARGET          		2000
+#define PROX_ATI_TARGET_HI          ((PROX_ATI_TARGET>>8)&0x00ff)
+#define PROX_ATI_TARGET_LO          (PROX_ATI_TARGET&0x00ff)
 /*
 	AUTO ATI LEVELS  touch
 */
-#define TOUCH_ATI_TARGET 						 1000
-#define TOUCH_ATI_TARGET_HI          ((TOUCH_ATI_TARGET>>8)&0x00ff)
-#define TOUCH_ATI_TARGET_LO          (TOUCH_ATI_TARGET&0x00ff)
+#define TOUCH_ATI_TARGET 						1000
+#define TOUCH_ATI_TARGET_HI         ((TOUCH_ATI_TARGET>>8)&0x00ff)
+#define TOUCH_ATI_TARGET_LO         (TOUCH_ATI_TARGET&0x00ff)
 
 /*
 	Prox Mode Group Selection
 */
 #define PM_CX_SELECT_DEF						(BIT1|BIT0)
+
+#define CHAN_NUM										2
+#define GROUP0_ENABLE 							1
+#define GROUP1_ENABLE 							1
+#define GROUP2_ENABLE 							0
+#define GROUP3_ENABLE 							0
+
+
+
+
 /*
 	Individual Channel Disable (CHAN_ACTIVE0) 
 */
-#define CHAN_ACTIVE0_DEF						0x03 //enable CH0-CH1
+#define CHAN_ACTIVE0_DEF						(BIT1|BIT0) //enable CH0-CH1
 /*
 	Individual Channel Disable (CHAN_ACTIVE1) 
 */
-#define CHAN_ACTIVE1_DEF						0x0d // ch4, ch6, ch7 enabled
+#define CHAN_ACTIVE1_DEF						(BIT3|BIT2|BIT0) // ch4, ch6, ch7 enabled
 /*
 	Individual Channel Disable (CHAN_ACTIVE2) 
 */
-#define CHAN_ACTIVE2_DEF						0x0d //ch8, ch10, ch11 enabled
+#define CHAN_ACTIVE2_DEF						(BIT3|BIT2|BIT0) //ch8, ch10, ch11 enabled
 /*
 	Individual Channel Disable (CHAN_ACTIVE3) 
 */
-#define CHAN_ACTIVE3_DEF						0x00 //ch12, ch13, ch15 enabled
+#define CHAN_ACTIVE3_DEF						0x00 //ch12, ch13, ch14, ch15 disabled
 /*
 	Individual Channel Disable (CHAN_ACTIVE4) 
 */
-#define CHAN_ACTIVE4_DEF						0x00 //ch16, ch17, ch19 enabled
+#define CHAN_ACTIVE4_DEF						0x00 //ch16, ch17, ch18, ch19 disabled
 
 
 /*
 	ATI Multiplier C (ATI_MULT1) 
 */
-#define ATI_MULT1_CH0                		3//   0
-#define ATI_MULT1_CH1                		3//  1
+#define ATI_MULT1_CH0                		1
+#define ATI_MULT1_CH1                		1
 #define ATI_MULT1_CH2                		0
 #define ATI_MULT1_CH3                		0
-#define ATI_MULT1_CH4                		0
+#define ATI_MULT1_CH4                		1
 #define ATI_MULT1_CH5                		0
-#define ATI_MULT1_CH6                		3
-#define ATI_MULT1_CH7                		3
+#define ATI_MULT1_CH6                		1
+#define ATI_MULT1_CH7                		0
 #define ATI_MULT1_CH8                		1
 #define ATI_MULT1_CH9                		0
-#define ATI_MULT1_CH10               		0
-#define ATI_MULT1_CH11               		0
+#define ATI_MULT1_CH10               		1
+#define ATI_MULT1_CH11               		1
 #define ATI_MULT1_CH12               		0
 #define ATI_MULT1_CH13               		0
 #define ATI_MULT1_CH14               		0

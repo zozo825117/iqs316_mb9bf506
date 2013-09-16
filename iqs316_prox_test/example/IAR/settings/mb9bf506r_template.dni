@@ -1,5 +1,5 @@
 [DebugChecksum]
-Checksum=512808085
+Checksum=-824710388
 [DisAssemblyWindow]
 NumStates=_ 1
 State 1=_ 1
@@ -41,10 +41,12 @@ CStepIntDis=_ 0
 [struct_types]
 Fmt0=IQS316_debug_t-Lta	3	0
 [array_types]
-Fmt0=int8_t[10]	3	0
-Fmt1=uint16_t[4]	3	0
-Fmt2=uint8_t[10]	3	0
-Fmt3=uint8_t[8]	4	0
+Fmt0=int8_t[100]	3	0
+Fmt1=int8_t[10]	3	0
+Fmt2=int8_t[30]	3	0
+Fmt3=uint16_t[4]	3	0
+Fmt4=uint8_t[10]	3	0
+Fmt5=uint8_t[8]	4	0
 [watch_formats]
 Fmt0={W}0:history_delta_ptr	3	0
 Fmt1={W}0:prox_chk_ok	3	0
@@ -52,10 +54,8 @@ Fmt2={W}0:temp	3	0
 [Disassemble mode]
 mode=0
 [Breakpoints2]
-Bp0=_ 0 "EMUL_CODE" "{$PROJ_DIR$\..\source\app\iqs316\upper level IQS316.c}.534.3" 0 0 1 "" 0 "" 0
-Bp1=_ 1 "EMUL_CODE" "{$PROJ_DIR$\..\source\app\iqs316\upper level IQS316.c}.667.9" 0 0 1 "" 0 "" 0
-Bp2=_ 1 "EMUL_CODE" "{$PROJ_DIR$\..\source\app\iqs316\upper level IQS316.c}.222.2" 0 0 1 "" 0 "" 0
-Count=3
+Bp0=_ 0 "EMUL_CODE" "{$PROJ_DIR$\..\source\app\iqs316\upper level IQS316.c}.726.9" 0 0 1 "" 0 "" 0
+Count=1
 [Log file]
 LoggingEnabled=_ 0
 LogFile=_ ""

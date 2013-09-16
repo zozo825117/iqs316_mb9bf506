@@ -44,99 +44,20 @@ extern "C"
 //****************************************************************************
 // 变量定义
 //****************************************************************************/
-IQS316_t IQS316; 
-
-#ifdef IQS316_DEBUG
-IQS316_debug_t Iqs316DebugInfo[IQS316_KEY_NUMBER];
-
-static int16_t last_delta=0;
-static uint8_t prox_chk_ok=0,time_up=0;
-static int8_t history_delta_buf[30],history_delta_ptr=0;
-static uint8_t prox_release=0;
+IQS316_t IQS316;
+/*
+ max key number
+*/
+uint8_t Key;
 
 
-void iqs316_debug(void)
-{
-  uint8_t temp,start_num;
- 	union
-  {
-    uint16_t lta_word[4];
-    uint8_t lta_byte[8];
-  }temp_lta_u;
+IQS316_chan_info_t Iqs316ChanInfo[IQS316_KEY_NUMBER];
 
- 	/* */ 
-	temp =  CommsIQSxxx_Read(PROX_SETTINGS_2);
-  temp |= BIT3|BIT1|BIT0;                   						//SKIP_CONV long term noise disabled still
-	CommsIQSxxx_Write(PROX_SETTINGS_2, temp);       //disable watchdog, //skip conversions, //disable LTN (set bit)
-	CommsIQSxxx_stop();	
+/*touch mode*/
+static uint8_t time_up=0,prox_release=0;
 
-  
-	start_num = CommsIQSxxx_Read(GROUP_NUM);
-	temp = start_num;  
-	do{
-
-     
-      temp_lta_u.lta_byte[1] = CommsIQSxxx_Read(LTA_04_HI)&0x0f;
-      temp_lta_u.lta_byte[0] = CommsIQSxxx_Read(LTA_04_LO);
-      temp_lta_u.lta_byte[3] = CommsIQSxxx_Read(LTA_15_HI)&0x0f;
-      temp_lta_u.lta_byte[2] = CommsIQSxxx_Read(LTA_15_LO);
-      temp_lta_u.lta_byte[5] = CommsIQSxxx_Read(LTA_26_HI)&0x0f;
-      temp_lta_u.lta_byte[4] = CommsIQSxxx_Read(LTA_26_LO);
-      temp_lta_u.lta_byte[7] = CommsIQSxxx_Read(LTA_37_HI)&0x0f;
-      temp_lta_u.lta_byte[6] = CommsIQSxxx_Read(LTA_37_LO);
-        
-		   /*
-		CommsIQSxxx_Read_continuous(LTA_04_HI,temp_lta_u.lta_byte,8);*/
-		nop();    
-		switch (temp)
-		{
-			case 0:
-          Iqs316DebugInfo[0].Lta = temp_lta_u.lta_word[0];
-          Iqs316DebugInfo[1].Lta = temp_lta_u.lta_word[1];
-					Iqs316DebugInfo[2].Lta = temp_lta_u.lta_word[2];
-					Iqs316DebugInfo[3].Lta = temp_lta_u.lta_word[3];
-				break;
-				
-			case 1:
-          Iqs316DebugInfo[4].Lta = temp_lta_u.lta_word[0];
-          Iqs316DebugInfo[5].Lta = temp_lta_u.lta_word[1];
-					Iqs316DebugInfo[6].Lta = temp_lta_u.lta_word[2];
-					Iqs316DebugInfo[7].Lta = temp_lta_u.lta_word[3];
-				break;
-			case 2:	
-          Iqs316DebugInfo[8].Lta = temp_lta_u.lta_word[0];
-          Iqs316DebugInfo[9].Lta = temp_lta_u.lta_word[1];
-					Iqs316DebugInfo[10].Lta = temp_lta_u.lta_word[2];
-					Iqs316DebugInfo[11].Lta = temp_lta_u.lta_word[3];
-
-
-				break;
-			case 3:
-          Iqs316DebugInfo[12].Lta = temp_lta_u.lta_word[0];
-          Iqs316DebugInfo[13].Lta = temp_lta_u.lta_word[1];
-					Iqs316DebugInfo[14].Lta = temp_lta_u.lta_word[2];
-					Iqs316DebugInfo[15].Lta = temp_lta_u.lta_word[3];
-
-
-				break;
-				
-			case 4:
-          Iqs316DebugInfo[16].Lta = temp_lta_u.lta_word[0];
-          Iqs316DebugInfo[17].Lta = temp_lta_u.lta_word[1];
-					Iqs316DebugInfo[18].Lta = temp_lta_u.lta_word[2];
-					Iqs316DebugInfo[19].Lta = temp_lta_u.lta_word[3];	
-				break;
-		}
-		CommsIQSxxx_stop();	
-
-		temp = CommsIQSxxx_Read(GROUP_NUM);
-	} while (temp != start_num);
-  
-
-		CommsIQSxxx_Write(PROX_SETTINGS_2, PROX_SETTINGS_2_DEF);       //默认值 
-		CommsIQSxxx_stop();		
-}
-#endif
+/*test*/
+static int8_t history_delta_buf[100],history_delta_ptr=0;
 
 
 //---------------------------------------------------------------------------//
@@ -254,69 +175,259 @@ void setTouchMode(void)
 	
 }
 /*
-	Function name:	setTouchMode
-	Parameters:		none
+Function name:	ScanProxChan
+Parameters: 	num_chan
+Return: 			group number
+Description:	
+*/
+uint8_t ReadOutChanInfo(uint8_t num_chan)
+{
+	uint8_t temp_num,ptr=0;
+	uint8_t i=0,j=0;
+
+	uint8_t buf[20];
+  struct{
+    union
+    {
+      uint16_t lta_word[4];
+      uint8_t lta_byte[8];
+    };	
+    union
+    {
+      uint16_t cs_word[4];
+      uint8_t cs_byte[8];
+    };
+    int16_t temp_delta[4];
+
+    }temp_info;
+	
+
+
+
+	temp_num = CommsIQSxxx_Read(GROUP_NUM);
+
+	CommsIQSxxx_Read_continuous(LTA_04_HI,&buf[0],2*num_chan);  //lta
+	CommsIQSxxx_Read_continuous(CUR_SAM_04_HI,&buf[2*num_chan],2*num_chan);  //current sample
+	
+	for(i=0,j=0;i<4;i++)
+	{
+		if(i<num_chan)
+			{
+				temp_info.lta_byte[j] = buf[j+1];
+				temp_info.lta_byte[j+1] = buf[j];
+				temp_info.lta_word[i] &= 0x0fff;
+				
+				temp_info.cs_byte[j] = buf[j+1+2*num_chan];
+				temp_info.cs_byte[j+1] = buf[j+2*num_chan];
+				j+=2;
+				
+				temp_info.temp_delta[i] = temp_info.lta_word[i] - temp_info.cs_word[i];
+
+			}
+		else
+			{
+				temp_info.lta_word[i]=0;
+				temp_info.cs_word[i]=0;
+				temp_info.temp_delta[i]=0;
+			}
+
+	}
+	switch(temp_num)
+	{
+		case 0:
+			ptr = 0;
+			break;
+		case 1:
+			ptr = 4;
+			break;
+		case 2:
+			ptr = 8;
+			break;
+		case 3:
+			ptr = 12;
+			break;
+		case 4:
+			ptr = 16;
+			break;
+			
+		default:		
+			break;
+	}
+  if(temp_num <=4)
+  {
+    Iqs316ChanInfo[0+ptr].Lta = temp_info.lta_word[0];
+    Iqs316ChanInfo[1+ptr].Lta = temp_info.lta_word[1];
+    Iqs316ChanInfo[2+ptr].Lta = temp_info.lta_word[2];
+    Iqs316ChanInfo[3+ptr].Lta = temp_info.lta_word[3];
+    Iqs316ChanInfo[0+ptr].CurtSample = temp_info.cs_word[0];
+    Iqs316ChanInfo[1+ptr].CurtSample = temp_info.cs_word[1];
+    Iqs316ChanInfo[2+ptr].CurtSample = temp_info.cs_word[2];
+    Iqs316ChanInfo[3+ptr].CurtSample = temp_info.cs_word[3];
+    Iqs316ChanInfo[0+ptr].Delta= temp_info.temp_delta[0];
+    Iqs316ChanInfo[1+ptr].Delta = temp_info.temp_delta[1];
+    Iqs316ChanInfo[2+ptr].Delta = temp_info.temp_delta[2];
+    Iqs316ChanInfo[3+ptr].Delta = temp_info.temp_delta[3];	
+  }
+
+
+	return temp_num;
+
+}
+
+
+
+/*
+Function name:	ScanProxChan
+Parameters: 	none
+Return: 			rc:1 detected 0 no
+Description:	
+
+*/
+uint8_t ScanProxChan(void)
+{
+	uint8_t temp,rc;
+        
+  CommsIQSxxx_stop();
+	/*
+		disable stop comm
+	*/
+	temp = CommsIQSxxx_Read(PROX_SETTINGS_2);
+	temp &=~ BIT5;
+	CommsIQSxxx_Write(PROX_SETTINGS_2, temp); 
+	/*
+		look at mode indicator bit
+	*/
+	if(0==ReadOutChanInfo(CHAN_NUM))
+		{	
+			rc = 1;
+		}
+	return rc;
+}
+
+
+/*
+	Function name:	ProxDetect
+	Parameters:		uint8_t prox_state
 	Return:				rc:1 detected 0 no
 	Description:	
 */
-uint8_t ProxDetect(void)
+uint8_t ProxDetect(uint8_t prox_state)
 {
-	uint8_t rc = 0,i;
-	int16_t delta;  
-  /*sum use group0 delta*/ 
-	for(i=0;i<4;i++)
-		{
-			if(PM_CX_SELECT_DEF & (1<<i))
-				{
-					delta += Iqs316DebugInfo[i].Delta;
-				}
-		}
-	history_delta_buf[history_delta_ptr++]=delta;
-	if(history_delta_ptr>=30)
-		{
-			history_delta_ptr=0;
-		}
+	uint8_t rc = 0,i,continus,cnt=0;
+	int16_t delta=0; 
+	static int16_t filter_buf[10],filter_ptr=0;
+	uint8_t index;
 	
-	/* 
-		if  delta coutinous  above last delta to set count than check ok  
-		*/ 
-	 if(delta > 0)
-	 	{
-		 if(0 == last_delta)
-		 	{
-		 		last_delta = delta;
-		 	}
-		 else
-		 	{
-		 	  if(delta>(last_delta + PM_CHK_MAX_THRESHOLD))
-		 	  	{
-		 	  		prox_chk_ok+=2;
-		 	  	}		 	
-		 	  else if(delta>(last_delta + PM_INC_THRESHOLD))
-		 	  	{
-		 	  		prox_chk_ok++;
-		 	  	}
-				else if(delta<(last_delta - PM_INC_THRESHOLD))
-					{
-						prox_chk_ok = 0;
-						
-					}
-				else
-					{
-						
-					}
-				last_delta = delta;
-		 	}			 	
-		 
-	   }
-
-		if(prox_chk_ok >= PM_CHK_CNT )  //|| delta > PM_CHK_MAX_THRESHOLD
+	do{
+	/*sum use group0 delta*/ 
+		for(i=0;i<4;i++)
 			{
-				rc = 1;
+				if(PM_CX_SELECT_DEF & (1<<i))
+					{
+						delta += Iqs316ChanInfo[i].Delta;
+					}
 			}
+		//test
+		history_delta_buf[history_delta_ptr++]=delta;
+		if(history_delta_ptr>=100)
+			{
+				history_delta_ptr=0;
+			}
+		
+		/*iir filter*/
+		filter_buf[filter_ptr] = delta;
+		delta=0;
+		index = filter_ptr;
+		if(cnt>=5)
+			{
+				for(i=0;i<5;i++)
+					{
+						delta += filter_buf[index];
+						if(index)
+							{
+								index--;
+							}
+						else
+							{
+							 index = 9;
+							}
+					}
+				delta /= 5;
+				if(delta >= PM_CHK_MAX_THRESHOLD )	
+					{
+						rc = 1;
+						break;
+					}
+
+			}
+		else
+			{
+
+			}
+
+    filter_ptr++;
+		if(filter_ptr>=10)
+			{
+				filter_ptr=0;
+			}
+    
+
+
+
+		if(prox_state)
+			{
+				continus = 1;
+				ScanProxChan();
+			}
+		else
+			{
+				break;
+			}
+
+cnt++;
+	}while(continus && cnt<10);
+
+	
+
 
 		return rc;
 }
+/*
+	Function name:	TouchDetect
+	Parameters: 		none
+	Return: 				key number
+	Description:	
+*/
+uint8_t TouchDetect(void)
+{
+
+		int16_t min = 32767;
+		int16_t max = -32768; 	
+		uint8_t i,max_key;
+		
+		for (i = IQS316_PROX_NUMBER;  i < IQS316_KEY_NUMBER;	i++)
+		{
+		
+				if (Iqs316ChanInfo[i].Delta< min)
+				{
+					min = Iqs316ChanInfo[i].Delta;
+					//min_key =i;
+				}
+						
+				if (Iqs316ChanInfo[i].Delta > max)
+				{
+						max = Iqs316ChanInfo[i].Delta;
+						max_key = i;
+				}
+
+		}
+		
+		if( max > TOUCH_MAX_THRESHOLD ) 
+			return max_key;
+		else
+			return NONE_KEY;
+}
+
 /*
 	Function name:	IQS316_Settings
 	Parameters:		None
@@ -341,19 +452,13 @@ void IQS316_Settings(void)
   /*
   		setting register start  will use about 2~3 second
   		*/ 
-#ifdef IQS316_DEBUG
   temp =  CommsIQSxxx_Read(PROD_NUM);
   if(temp!=27)
   {
     nop(); //通讯异常
   }
-#endif  
-
 
   CommsIQSxxx_Write(UI_SETTINGS0,UI_SETTINGS0_DEF); 
-  //add zozo
-	//setProxMode();
-	//-------
   CommsIQSxxx_Write(PROX_SETTINGS_1,PROX_SETTINGS_1_DEF);  
   CommsIQSxxx_Write(PROX_SETTINGS_2,PROX_SETTINGS_2_DEF);  
 
@@ -365,10 +470,10 @@ void IQS316_Settings(void)
 	/*
 	 set touch channal
 	*/
-	CommsIQSxxx_Write(CHAN_ACTIVE1, CHAN_ACTIVE0_DEF);			    
-	CommsIQSxxx_Write(CHAN_ACTIVE2, CHAN_ACTIVE0_DEF);			    
-	CommsIQSxxx_Write(CHAN_ACTIVE3, CHAN_ACTIVE0_DEF);			    
-	CommsIQSxxx_Write(CHAN_ACTIVE4, CHAN_ACTIVE0_DEF);			    
+	CommsIQSxxx_Write(CHAN_ACTIVE1, CHAN_ACTIVE1_DEF);			    
+	CommsIQSxxx_Write(CHAN_ACTIVE2, CHAN_ACTIVE2_DEF);			    
+	CommsIQSxxx_Write(CHAN_ACTIVE3, CHAN_ACTIVE3_DEF);			    
+	CommsIQSxxx_Write(CHAN_ACTIVE4, CHAN_ACTIVE4_DEF);			    
 	CommsIQSxxx_stop();
 
 
@@ -402,43 +507,43 @@ void IQS316_Settings(void)
 					temp_lta = CommsIQSxxx_Read(LTA_04_HI);
 					CommsIQSxxx_Write(LTA_04_HI, temp_lta | TOUCH_THRESHOLD_CH4);
 					temp_lta = CommsIQSxxx_Read(LTA_15_HI);
-					CommsIQSxxx_Write(LTA_15_HI, temp_lta | TOUCH_THRESHOLD_CH8);
+					CommsIQSxxx_Write(LTA_15_HI, temp_lta | TOUCH_THRESHOLD_CH5);
 					temp_lta = CommsIQSxxx_Read(LTA_26_HI);
-					CommsIQSxxx_Write(LTA_26_HI, temp_lta | TOUCH_THRESHOLD_CH12);
+					CommsIQSxxx_Write(LTA_26_HI, temp_lta | TOUCH_THRESHOLD_CH6);
 					temp_lta = CommsIQSxxx_Read(LTA_37_HI);
-					CommsIQSxxx_Write(LTA_37_HI, temp_lta | TOUCH_THRESHOLD_CH16);
+					CommsIQSxxx_Write(LTA_37_HI, temp_lta | TOUCH_THRESHOLD_CH7);
 					CommsIQSxxx_Write(ATI_MULT1, ATI_MULT1_GRP1);  
 				break;
 			case 2:		
 					temp_lta = CommsIQSxxx_Read(LTA_04_HI);
-					CommsIQSxxx_Write(LTA_04_HI, temp_lta | TOUCH_THRESHOLD_CH5);
+					CommsIQSxxx_Write(LTA_04_HI, temp_lta | TOUCH_THRESHOLD_CH8);
 					temp_lta = CommsIQSxxx_Read(LTA_15_HI);
 					CommsIQSxxx_Write(LTA_15_HI, temp_lta | TOUCH_THRESHOLD_CH9);
 					temp_lta = CommsIQSxxx_Read(LTA_26_HI);
-					CommsIQSxxx_Write(LTA_26_HI, temp_lta | TOUCH_THRESHOLD_CH13);
+					CommsIQSxxx_Write(LTA_26_HI, temp_lta | TOUCH_THRESHOLD_CH10);
 					temp_lta = CommsIQSxxx_Read(LTA_37_HI);
-					CommsIQSxxx_Write(LTA_37_HI, temp_lta | TOUCH_THRESHOLD_CH17);
+					CommsIQSxxx_Write(LTA_37_HI, temp_lta | TOUCH_THRESHOLD_CH11);
 					CommsIQSxxx_Write(ATI_MULT1, ATI_MULT1_GRP2);  
 				break;
 			case 3:
 					temp_lta = CommsIQSxxx_Read(LTA_04_HI);
-					CommsIQSxxx_Write(LTA_04_HI, temp_lta | TOUCH_THRESHOLD_CH6);
+					CommsIQSxxx_Write(LTA_04_HI, temp_lta | TOUCH_THRESHOLD_CH12);
 					temp_lta = CommsIQSxxx_Read(LTA_15_HI);
-					CommsIQSxxx_Write(LTA_15_HI, temp_lta | TOUCH_THRESHOLD_CH10);
+					CommsIQSxxx_Write(LTA_15_HI, temp_lta | TOUCH_THRESHOLD_CH13);
 					temp_lta = CommsIQSxxx_Read(LTA_26_HI);
 					CommsIQSxxx_Write(LTA_26_HI, temp_lta | TOUCH_THRESHOLD_CH14);
 					temp_lta = CommsIQSxxx_Read(LTA_37_HI);
-					CommsIQSxxx_Write(LTA_37_HI, temp_lta | TOUCH_THRESHOLD_CH18);
+					CommsIQSxxx_Write(LTA_37_HI, temp_lta | TOUCH_THRESHOLD_CH15);
 					CommsIQSxxx_Write(ATI_MULT1, ATI_MULT1_GRP3);  
 				break;
 				
 			case 4:
 					temp_lta = CommsIQSxxx_Read(LTA_04_HI);
-					CommsIQSxxx_Write(LTA_04_HI, temp_lta | TOUCH_THRESHOLD_CH7);
+					CommsIQSxxx_Write(LTA_04_HI, temp_lta | TOUCH_THRESHOLD_CH16);
 					temp_lta = CommsIQSxxx_Read(LTA_15_HI);
-					CommsIQSxxx_Write(LTA_15_HI, temp_lta | TOUCH_THRESHOLD_CH11);
+					CommsIQSxxx_Write(LTA_15_HI, temp_lta | TOUCH_THRESHOLD_CH17);
 					temp_lta = CommsIQSxxx_Read(LTA_26_HI);
-					CommsIQSxxx_Write(LTA_26_HI, temp_lta | TOUCH_THRESHOLD_CH15);
+					CommsIQSxxx_Write(LTA_26_HI, temp_lta | TOUCH_THRESHOLD_CH18);
 					temp_lta = CommsIQSxxx_Read(LTA_37_HI);
 					CommsIQSxxx_Write(LTA_37_HI, temp_lta | TOUCH_THRESHOLD_CH19);				
 					CommsIQSxxx_Write(ATI_MULT1, ATI_MULT1_GRP4);    			
@@ -457,13 +562,14 @@ void IQS316_Settings(void)
 	/*ATI*/ 
   IQS316_ATI(1);
   IQS316_ATI(0);
-
-#ifdef IQS316_DEBUG
-  iqs316_debug();
-#endif
-
+	
+	/*prox mode*/ 
 	setProxMode();
-	CommsIQSxxx_Write(PROX_SETTINGS_2, PROX_SETTINGS_2_DEF | BIT5);       //stop comm 
+	
+	/*
+		set stop comm
+	*/ 
+	CommsIQSxxx_Write(PROX_SETTINGS_2, PROX_SETTINGS_2_DEF | BIT5);  
 	CommsIQSxxx_stop();			
 
 			
@@ -512,24 +618,8 @@ void Init_iqs316(void)
 void IQS316_New_Conversion(void)
 {
   uint8_t temp,temp_num, temp_flag,start_num=0, temp_touch, temp_prox;
-	uint8_t i=0,j=0,touch_detected=0,prox_detected=0;
-	
-  #ifdef IQS316_DEBUG
-			  uint8_t ptr,buf[20];
-			 	union
-			  {
-			    uint16_t lta_word[4];
-			    uint8_t lta_byte[8];
-			  }temp_lta_u;
+	uint8_t touch_detected=0,prox_detected=0;
 
-			 	union
-			  {
-			    uint16_t cs_word[4];
-			    uint8_t cs_byte[8];
-			  }temp_cs_u;
-
-				int16_t temp_delta[4];
-	#endif
   
 		/*
 			disable stop comm
@@ -550,24 +640,7 @@ void IQS316_New_Conversion(void)
 			temp_touch = CommsIQSxxx_Read(TOUCH_STAT);
 			temp_prox = CommsIQSxxx_Read(PROX_STAT);
 			
-#ifdef IQS316_DEBUG
-			CommsIQSxxx_Read_continuous(LTA_04_HI,&buf[0],8);  //lta
-			CommsIQSxxx_Read_continuous(CUR_SAM_04_HI,&buf[8],8);  //current sample
-			
-			for(i=0,j=0;i<4;i++)
-			{
-			  
-				temp_lta_u.lta_byte[j] = buf[j+1];
-				temp_lta_u.lta_byte[j+1] = buf[j];
-				temp_lta_u.lta_word[i] &= 0x0fff;
-				
-				temp_cs_u.cs_byte[j] = buf[j+1+8];
-				temp_cs_u.cs_byte[j+1] = buf[j+8];
-				j+=2;
-
-				temp_delta[i] = temp_lta_u.lta_word[i] - temp_cs_u.cs_word[i];
-			}
-#endif
+			ReadOutChanInfo(4);
 
       if(temp_touch)
       {
@@ -581,7 +654,6 @@ void IQS316_New_Conversion(void)
 			switch(temp_num)
 			{
 				case 0:
-					ptr = 0;
 					goto skip_stop;
 					break;
 					
@@ -590,28 +662,24 @@ void IQS316_New_Conversion(void)
 					IQS316.touch4_11 = IQS316.touch4_11 & 0xF0;
 					IQS316.prox4_11 = IQS316.prox4_11 | (temp_prox & 0x0F);
 					IQS316.touch4_11 = IQS316.touch4_11 | (temp_touch & 0x0F);
-					ptr = 4;
 					break;
 				case 2:
 					IQS316.prox4_11 = IQS316.prox4_11 & 0x0F;
 					IQS316.touch4_11 = IQS316.touch4_11 & 0x0F;
 					IQS316.prox4_11 = IQS316.prox4_11 | ((temp_prox & 0x0F) << 4);
 					IQS316.touch4_11 = IQS316.touch4_11 | ((temp_touch & 0x0F) << 4);
-					ptr = 8;
 					break;
 				case 3:
 					IQS316.prox12_19 = IQS316.prox12_19 & 0xF0;
 					IQS316.touch12_19 = IQS316.touch12_19 & 0xF0;
 					IQS316.prox12_19 = IQS316.prox12_19 | (temp_prox & 0x0F);
 					IQS316.touch12_19 = IQS316.touch12_19 | (temp_touch & 0x0F);
-					ptr = 12;
 					break;
 				case 4:
 					IQS316.prox12_19 = IQS316.prox12_19 & 0x0F;
 					IQS316.touch12_19 = IQS316.touch12_19 & 0x0F;
 					IQS316.prox12_19 = IQS316.prox12_19 | ((temp_prox & 0x0F) << 4);
 					IQS316.touch12_19 = IQS316.touch12_19 | ((temp_touch & 0x0F) << 4);
-					ptr = 16;
 					break;
 			    default:    
 		             
@@ -620,20 +688,7 @@ void IQS316_New_Conversion(void)
 		
 			CommsIQSxxx_stop();
 skip_stop:			
-#ifdef IQS316_DEBUG
-	    Iqs316DebugInfo[0+ptr].Lta = temp_lta_u.lta_word[0];
-	    Iqs316DebugInfo[1+ptr].Lta = temp_lta_u.lta_word[1];
-			Iqs316DebugInfo[2+ptr].Lta = temp_lta_u.lta_word[2];
-			Iqs316DebugInfo[3+ptr].Lta = temp_lta_u.lta_word[3];
-	    Iqs316DebugInfo[0+ptr].CurtSample = temp_cs_u.cs_word[0];
-	    Iqs316DebugInfo[1+ptr].CurtSample = temp_cs_u.cs_word[1];
-			Iqs316DebugInfo[2+ptr].CurtSample = temp_cs_u.cs_word[2];
-			Iqs316DebugInfo[3+ptr].CurtSample = temp_cs_u.cs_word[3];
-	    Iqs316DebugInfo[0+ptr].Delta= temp_delta[0];
-	    Iqs316DebugInfo[1+ptr].Delta = temp_delta[1];
-			Iqs316DebugInfo[2+ptr].Delta = temp_delta[2];
-			Iqs316DebugInfo[3+ptr].Delta = temp_delta[3];	
-#endif
+
 			
 			/*
 				proximity mode scan once break
@@ -666,10 +721,9 @@ skip_stop:
 			{
 			  if(0==prox_release)
 			  	{
-						if(ProxDetect())
+						if(ProxDetect(prox_detected))
 							{
 								IQS316.prox_detected = 1;
-								prox_chk_ok = 0;
 								setTouchMode();
 							}
 						else
@@ -691,7 +745,8 @@ skip_stop:
 				/*
 				 touch detect
 				*/
-				if(touch_detected)
+				Key = TouchDetect();
+				if(Key != NONE_KEY)
 					{
 						IQS316.touch_detected = 1;
 						time_up =0;

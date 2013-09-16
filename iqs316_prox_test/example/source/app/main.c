@@ -328,11 +328,11 @@ void Process_Touch_Data(void){
 				
 		if (IQS316.prox_detected)
 		{ 	 
-			USER_LED_PDOR &=~ USER_LED1;	// on
+			USER_LED_PDOR |= USER_LED1;	// on
 		} 	 
 		else
 		{
-			USER_LED_PDOR |= USER_LED1; // off
+			USER_LED_PDOR &=~ USER_LED1; // off
 		} 			
 		
 } 	 
