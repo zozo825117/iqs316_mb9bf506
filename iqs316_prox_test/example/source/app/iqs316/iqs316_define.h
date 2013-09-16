@@ -40,8 +40,6 @@ extern "C"
 //Æ÷¼þµØÖ· */
 #define IQS316_ADDR 						0x74	
   
-#define IQS316_DEBUG
-
 #define IQS316_KEY_NUMBER       16+4
 
 //#define IQS316_RAM_PROG					//Enable minimum mode
@@ -108,8 +106,8 @@ extern "C"
 		*/
 #define PROX_RANGE 							 	0  
 
-#define PROX_THRESHOLD_CH0				(3<<4)
-#define PROX_THRESHOLD_CH1				(3<<4)
+#define PROX_THRESHOLD_CH0				(2<<4)
+#define PROX_THRESHOLD_CH1				(2<<4)
 #define PROX_THRESHOLD_CH2				(0<<4)
 #define PROX_THRESHOLD_CH3				(0<<4)
 
@@ -186,6 +184,16 @@ Bit 0: WDT_DISABLE:
 	Prox Mode Group Selection
 */
 #define PM_CX_SELECT_DEF						(BIT1|BIT0)
+
+#define CHAN_NUM										2
+#define GROUP0_ENABLE 							1
+#define GROUP1_ENABLE 							1
+#define GROUP2_ENABLE 							0
+#define GROUP3_ENABLE 							0
+
+
+
+
 /*
 	Individual Channel Disable (CHAN_ACTIVE0) 
 */
