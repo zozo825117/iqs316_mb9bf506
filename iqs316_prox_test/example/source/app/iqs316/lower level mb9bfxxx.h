@@ -68,7 +68,6 @@ extern "C"
 #define I2C_RDY_LO              (I2C_RDY_REG_OUT &=~ I2C_RDY_BIT)
 
 /*MCLR define */
-
 #define  MCLR_DIR_INPUT 				(MCLR_REG_DIR &=~ MCLR_BIT)
 #define  MCLR_DIR_OUTPUT				(MCLR_REG_DIR |= MCLR_BIT)
 #define  MCLR_LO								(MCLR_REG_OUT &=~ I2C_RDY_BIT)

@@ -111,7 +111,6 @@ uint8_t CommsIQSxxx_send(uint8_t send_data)
 				I2C_SDA_LO;//SDA = 0;				
 		  }
 		  send_data = send_data<<1;
-		 // _NOP();
 		  nop();
 		  
 		  I2C_SCL_DIR_INPUT;//SCLM = 0;
@@ -288,8 +287,8 @@ void CommsIQSxxx_start(void)
 	  while(!I2C_RDY_IN); //µÈ´ıready 
 		I2C_SCL_DIR_INPUT;
 		while(!I2C_SCL_IN);
-		I2C_SDA_DIR_OUTPUT;
 		I2C_SDA_HI;    
+		I2C_SDA_DIR_OUTPUT;
 		while(!I2C_SDA_IN);
 		delay_us(4);//4us
 		I2C_SDA_LO;		
@@ -309,8 +308,8 @@ void CommsIQSxxx_repeat_start(void)
 	  while(!I2C_RDY_IN); //µÈ´ıready 
 		I2C_SCL_DIR_INPUT;
 		while(!I2C_SCL_IN);
-		I2C_SDA_DIR_OUTPUT;
 		I2C_SDA_HI;
+		I2C_SDA_DIR_OUTPUT;
 		while(!I2C_SDA_IN);
 		delay_us(4);//4us
 		I2C_SDA_LO;		
