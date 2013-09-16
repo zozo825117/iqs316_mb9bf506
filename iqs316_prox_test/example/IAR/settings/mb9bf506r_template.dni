@@ -1,5 +1,5 @@
 [DebugChecksum]
-Checksum=639511556
+Checksum=-824710388
 [DisAssemblyWindow]
 NumStates=_ 1
 State 1=_ 1
@@ -54,12 +54,8 @@ Fmt2={W}0:temp	3	0
 [Disassemble mode]
 mode=0
 [Breakpoints2]
-Bp0=_ 0 "EMUL_CODE" "{$PROJ_DIR$\..\source\app\iqs316\upper level IQS316.c}.487.3" 0 0 1 "" 0 "" 0
-Bp1=_ 0 "EMUL_CODE" "{$PROJ_DIR$\..\source\app\iqs316\upper level IQS316.c}.378.6" 0 0 1 "" 0 "" 0
-Bp2=_ 0 "EMUL_CODE" "{$PROJ_DIR$\..\source\app\iqs316\upper level IQS316.c}.734.2" 0 0 1 "" 0 "" 0
-Bp3=_ 0 "EMUL_CODE" "{$PROJ_DIR$\..\source\app\iqs316\upper level IQS316.c}.455.6" 0 0 1 "" 0 "" 0
-Bp4=_ 0 "EMUL_CODE" "{$PROJ_DIR$\..\source\app\iqs316\upper level IQS316.c}.387.3" 0 0 1 "" 0 "" 0
-Count=5
+Bp0=_ 0 "EMUL_CODE" "{$PROJ_DIR$\..\source\app\iqs316\upper level IQS316.c}.726.9" 0 0 1 "" 0 "" 0
+Count=1
 [Log file]
 LoggingEnabled=_ 0
 LogFile=_ ""

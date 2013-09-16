@@ -39,30 +39,32 @@ extern "C"
 //----------------------------------------------------
 //Æ÷¼þµØÖ· */
 #define IQS316_ADDR 						0x74	
-  
-#define IQS316_KEY_NUMBER       16+4
+
+#define IQS316_TOUCH_NUMBER 		16
+#define IQS316_PROX_NUMBER 			4
+
+
+#define IQS316_KEY_NUMBER       (IQS316_TOUCH_NUMBER+IQS316_PROX_NUMBER)
 
 //#define IQS316_RAM_PROG					//Enable minimum mode
 
-/*
-	Prox check	increased threshold
 
-#define PM_INC_THRESHOLD					 0*/
-
-
-/*
-	Prox check coutinuous count times
-
-#define PM_CHK_CNT								 5*/
 /*
 	touch check 	if no touch wait memont to back prox mode  suggest 4 second
 */
-#define TOUCH_CHK_CNT 						 40
+#define TOUCH_CHK_CNT 						 60
 /*
 	Prox check	 
 */
 #define PM_CHK_MAX_THRESHOLD			 10
-#define PM_CHK_THRESHOLD           10
+/*
+touch detect
+*/
+#define TOUCH_MAX_THRESHOLD				 80
+/*
+none touch key
+*/
+#define NONE_KEY 									0xFF
 
 
 //----------------------------------------------------
@@ -78,14 +80,14 @@ extern "C"
 		*/
 #define TOUCH_RANGE								 0
 
-#define TOUCH_THRESHOLD_CH4 			 (1<<6)
-#define TOUCH_THRESHOLD_CH5 			 (1<<6)
-#define TOUCH_THRESHOLD_CH6 			 (1<<6)
-#define TOUCH_THRESHOLD_CH7 			 (1<<6)
-#define TOUCH_THRESHOLD_CH8 			 (1<<6)
-#define TOUCH_THRESHOLD_CH9 			 (1<<6)
-#define TOUCH_THRESHOLD_CH10			 (1<<6)
-#define TOUCH_THRESHOLD_CH11			 (1<<6)
+#define TOUCH_THRESHOLD_CH4 			 (0<<6)
+#define TOUCH_THRESHOLD_CH5 			 (0<<6)
+#define TOUCH_THRESHOLD_CH6 			 (0<<6)
+#define TOUCH_THRESHOLD_CH7 			 (0<<6)
+#define TOUCH_THRESHOLD_CH8 			 (0<<6)
+#define TOUCH_THRESHOLD_CH9 			 (0<<6)
+#define TOUCH_THRESHOLD_CH10			 (0<<6)
+#define TOUCH_THRESHOLD_CH11			 (0<<6)
 #define TOUCH_THRESHOLD_CH12			 (2<<6)
 #define TOUCH_THRESHOLD_CH13			 (2<<6)
 #define TOUCH_THRESHOLD_CH14			 (2<<6)
@@ -170,15 +172,15 @@ Bit 0: WDT_DISABLE:
 /*
 	AUTO ATI LEVELS  Prox
 */
-#define PROX_ATI_TARGET              2000
-#define PROX_ATI_TARGET_HI           ((PROX_ATI_TARGET>>8)&0x00ff)
-#define PROX_ATI_TARGET_LO           (PROX_ATI_TARGET&0x00ff)
+#define PROX_ATI_TARGET          		2000
+#define PROX_ATI_TARGET_HI          ((PROX_ATI_TARGET>>8)&0x00ff)
+#define PROX_ATI_TARGET_LO          (PROX_ATI_TARGET&0x00ff)
 /*
 	AUTO ATI LEVELS  touch
 */
-#define TOUCH_ATI_TARGET 						 1000
-#define TOUCH_ATI_TARGET_HI          ((TOUCH_ATI_TARGET>>8)&0x00ff)
-#define TOUCH_ATI_TARGET_LO          (TOUCH_ATI_TARGET&0x00ff)
+#define TOUCH_ATI_TARGET 						1000
+#define TOUCH_ATI_TARGET_HI         ((TOUCH_ATI_TARGET>>8)&0x00ff)
+#define TOUCH_ATI_TARGET_LO         (TOUCH_ATI_TARGET&0x00ff)
 
 /*
 	Prox Mode Group Selection
@@ -226,7 +228,7 @@ Bit 0: WDT_DISABLE:
 #define ATI_MULT1_CH4                		1
 #define ATI_MULT1_CH5                		0
 #define ATI_MULT1_CH6                		1
-#define ATI_MULT1_CH7                		1
+#define ATI_MULT1_CH7                		0
 #define ATI_MULT1_CH8                		1
 #define ATI_MULT1_CH9                		0
 #define ATI_MULT1_CH10               		1

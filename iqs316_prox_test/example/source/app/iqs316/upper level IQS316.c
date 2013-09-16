@@ -44,7 +44,11 @@ extern "C"
 //****************************************************************************
 // 变量定义
 //****************************************************************************/
-IQS316_t IQS316; 
+IQS316_t IQS316;
+/*
+ max key number
+*/
+uint8_t Key;
 
 
 IQS316_chan_info_t Iqs316ChanInfo[IQS316_KEY_NUMBER];
@@ -294,24 +298,26 @@ uint8_t ScanProxChan(void)
 		look at mode indicator bit
 	*/
 	if(0==ReadOutChanInfo(CHAN_NUM))
-		{
+		{	
 			rc = 1;
 		}
 	return rc;
 }
 
+
 /*
-	Function name:	setTouchMode
+	Function name:	ProxDetect
 	Parameters:		uint8_t prox_state
 	Return:				rc:1 detected 0 no
 	Description:	
 */
 uint8_t ProxDetect(uint8_t prox_state)
 {
-	uint8_t rc = 0,i,continus,cnt=10;
+	uint8_t rc = 0,i,continus,cnt=0;
 	int16_t delta=0; 
-  static int32_t capfilter=0;  
-
+	static int16_t filter_buf[10],filter_ptr=0;
+	uint8_t index;
+	
 	do{
 	/*sum use group0 delta*/ 
 		for(i=0;i<4;i++)
@@ -321,24 +327,52 @@ uint8_t ProxDetect(uint8_t prox_state)
 						delta += Iqs316ChanInfo[i].Delta;
 					}
 			}
-		
+		//test
 		history_delta_buf[history_delta_ptr++]=delta;
-		/*iir filter*/
-    capfilter -= ((capfilter - delta) >>3);
-
 		if(history_delta_ptr>=100)
 			{
 				history_delta_ptr=0;
 			}
 		
-    delta=0;
-
-		if(capfilter >= PM_CHK_MAX_THRESHOLD )	//|| delta > PM_CHK_MAX_THRESHOLD
+		/*iir filter*/
+		filter_buf[filter_ptr] = delta;
+		delta=0;
+		index = filter_ptr;
+		if(cnt>=5)
 			{
-				rc = 1;
-        capfilter=0;
-				break;
+				for(i=0;i<5;i++)
+					{
+						delta += filter_buf[index];
+						if(index)
+							{
+								index--;
+							}
+						else
+							{
+							 index = 9;
+							}
+					}
+				delta /= 5;
+				if(delta >= PM_CHK_MAX_THRESHOLD )	
+					{
+						rc = 1;
+						break;
+					}
+
 			}
+		else
+			{
+
+			}
+
+    filter_ptr++;
+		if(filter_ptr>=10)
+			{
+				filter_ptr=0;
+			}
+    
+
+
 
 		if(prox_state)
 			{
@@ -350,16 +384,50 @@ uint8_t ProxDetect(uint8_t prox_state)
 				break;
 			}
 
-			
-
-
-	}while(continus && cnt--);
+cnt++;
+	}while(continus && cnt<10);
 
 	
 
 
 		return rc;
 }
+/*
+	Function name:	TouchDetect
+	Parameters: 		none
+	Return: 				key number
+	Description:	
+*/
+uint8_t TouchDetect(void)
+{
+
+		int16_t min = 32767;
+		int16_t max = -32768; 	
+		uint8_t i,max_key;
+		
+		for (i = IQS316_PROX_NUMBER;  i < IQS316_KEY_NUMBER;	i++)
+		{
+		
+				if (Iqs316ChanInfo[i].Delta< min)
+				{
+					min = Iqs316ChanInfo[i].Delta;
+					//min_key =i;
+				}
+						
+				if (Iqs316ChanInfo[i].Delta > max)
+				{
+						max = Iqs316ChanInfo[i].Delta;
+						max_key = i;
+				}
+
+		}
+		
+		if( max > TOUCH_MAX_THRESHOLD ) 
+			return max_key;
+		else
+			return NONE_KEY;
+}
+
 /*
 	Function name:	IQS316_Settings
 	Parameters:		None
@@ -391,9 +459,6 @@ void IQS316_Settings(void)
   }
 
   CommsIQSxxx_Write(UI_SETTINGS0,UI_SETTINGS0_DEF); 
-  //add zozo
-	//setProxMode();
-	//-------
   CommsIQSxxx_Write(PROX_SETTINGS_1,PROX_SETTINGS_1_DEF);  
   CommsIQSxxx_Write(PROX_SETTINGS_2,PROX_SETTINGS_2_DEF);  
 
@@ -497,9 +562,14 @@ void IQS316_Settings(void)
 	/*ATI*/ 
   IQS316_ATI(1);
   IQS316_ATI(0);
-
+	
+	/*prox mode*/ 
 	setProxMode();
-	CommsIQSxxx_Write(PROX_SETTINGS_2, PROX_SETTINGS_2_DEF | BIT5);       //stop comm 
+	
+	/*
+		set stop comm
+	*/ 
+	CommsIQSxxx_Write(PROX_SETTINGS_2, PROX_SETTINGS_2_DEF | BIT5);  
 	CommsIQSxxx_stop();			
 
 			
@@ -570,7 +640,7 @@ void IQS316_New_Conversion(void)
 			temp_touch = CommsIQSxxx_Read(TOUCH_STAT);
 			temp_prox = CommsIQSxxx_Read(PROX_STAT);
 			
-			ReadOutChanInfo(CHAN_NUM);
+			ReadOutChanInfo(4);
 
       if(temp_touch)
       {
@@ -675,7 +745,8 @@ skip_stop:
 				/*
 				 touch detect
 				*/
-				if(touch_detected)
+				Key = TouchDetect();
+				if(Key != NONE_KEY)
 					{
 						IQS316.touch_detected = 1;
 						time_up =0;
