@@ -47,12 +47,14 @@ extern "C"
 IQS316_t IQS316; 
 
 #ifdef IQS316_DEBUG
+
 IQS316_debug_t Iqs316DebugInfo[IQS316_KEY_NUMBER];
 
-static int16_t last_delta=0;
-static uint8_t prox_chk_ok=0,time_up=0;
-static int8_t history_delta_buf[30],history_delta_ptr=0;
-static uint8_t prox_release=0;
+/*touch mode*/
+static uint8_t time_up=0,prox_release=0;
+
+/*test*/
+static int8_t history_delta_buf[100],history_delta_ptr=0;
 
 
 void iqs316_debug(void)
@@ -254,66 +256,142 @@ void setTouchMode(void)
 	
 }
 /*
+Function name:	ScanProxChan
+Parameters: 	none
+Return: 			rc:1 detected 0 no
+Description:	
+
+*/
+uint8_t ScanProxChan(void)
+{
+	uint8_t temp,temp_num;
+	uint8_t i=0,j=0;
+
+#ifdef IQS316_DEBUG
+				uint8_t buf[20];
+				union
+				{
+					uint16_t lta_word[4];
+					uint8_t lta_byte[8];
+				}temp_lta_u;
+	
+				union
+				{
+					uint16_t cs_word[4];
+					uint8_t cs_byte[8];
+				}temp_cs_u;
+	
+				int16_t temp_delta[4];
+#endif
+        
+    CommsIQSxxx_stop();
+		/*
+			disable stop comm
+		*/
+		temp = CommsIQSxxx_Read(PROX_SETTINGS_2);
+		temp &=~ BIT5;
+		CommsIQSxxx_Write(PROX_SETTINGS_2, temp); 
+		/*
+			look at mode indicator bit
+		*/
+
+	
+		temp_num = CommsIQSxxx_Read(GROUP_NUM);
+		if(0==temp_num)
+			{
+	#ifdef IQS316_DEBUG
+					CommsIQSxxx_Read_continuous(LTA_04_HI,&buf[0],8);  //lta
+					CommsIQSxxx_Read_continuous(CUR_SAM_04_HI,&buf[8],8);  //current sample
+					
+					for(i=0,j=0;i<4;i++)
+					{
+						
+						temp_lta_u.lta_byte[j] = buf[j+1];
+						temp_lta_u.lta_byte[j+1] = buf[j];
+						temp_lta_u.lta_word[i] &= 0x0fff;
+						
+						temp_cs_u.cs_byte[j] = buf[j+1+8];
+						temp_cs_u.cs_byte[j+1] = buf[j+8];
+						j+=2;
+		
+						temp_delta[i] = temp_lta_u.lta_word[i] - temp_cs_u.cs_word[i];
+					}
+					
+					Iqs316DebugInfo[0].Lta = temp_lta_u.lta_word[0];
+					Iqs316DebugInfo[1].Lta = temp_lta_u.lta_word[1];
+					Iqs316DebugInfo[2].Lta = temp_lta_u.lta_word[2];
+					Iqs316DebugInfo[3].Lta = temp_lta_u.lta_word[3];
+					Iqs316DebugInfo[0].CurtSample = temp_cs_u.cs_word[0];
+					Iqs316DebugInfo[1].CurtSample = temp_cs_u.cs_word[1];
+					Iqs316DebugInfo[2].CurtSample = temp_cs_u.cs_word[2];
+					Iqs316DebugInfo[3].CurtSample = temp_cs_u.cs_word[3];
+					Iqs316DebugInfo[0].Delta= temp_delta[0];
+					Iqs316DebugInfo[1].Delta = temp_delta[1];
+					Iqs316DebugInfo[2].Delta = temp_delta[2];
+					Iqs316DebugInfo[3].Delta = temp_delta[3]; 
+
+					
+#endif
+			}
+return 0;
+}
+
+/*
 	Function name:	setTouchMode
-	Parameters:		none
+	Parameters:		uint8_t prox_state
 	Return:				rc:1 detected 0 no
 	Description:	
 */
-uint8_t ProxDetect(void)
+uint8_t ProxDetect(uint8_t prox_state)
 {
-	uint8_t rc = 0,i;
-	int16_t delta;  
-  /*sum use group0 delta*/ 
-	for(i=0;i<4;i++)
-		{
-			if(PM_CX_SELECT_DEF & (1<<i))
-				{
-					delta += Iqs316DebugInfo[i].Delta;
-				}
-		}
-	history_delta_buf[history_delta_ptr++]=delta;
-	if(history_delta_ptr>=30)
-		{
-			history_delta_ptr=0;
-		}
-	
-	/* 
-		if  delta coutinous  above last delta to set count than check ok  
-		*/ 
-	 if(delta > 0)
-	 	{
-		 if(0 == last_delta)
-		 	{
-		 		last_delta = delta;
-		 	}
-		 else
-		 	{
-		 	  if(delta>(last_delta + PM_CHK_MAX_THRESHOLD))
-		 	  	{
-		 	  		prox_chk_ok+=2;
-		 	  	}		 	
-		 	  else if(delta>(last_delta + PM_INC_THRESHOLD))
-		 	  	{
-		 	  		prox_chk_ok++;
-		 	  	}
-				else if(delta<(last_delta - PM_INC_THRESHOLD))
-					{
-						prox_chk_ok = 0;
-						
-					}
-				else
-					{
-						
-					}
-				last_delta = delta;
-		 	}			 	
-		 
-	   }
+	uint8_t rc = 0,i,continus,cnt=10;
+	int16_t delta=0; 
+  static int32_t capfilter=0;  
 
-		if(prox_chk_ok >= PM_CHK_CNT )  //|| delta > PM_CHK_MAX_THRESHOLD
+	do{
+	/*sum use group0 delta*/ 
+		for(i=0;i<4;i++)
+			{
+				if(PM_CX_SELECT_DEF & (1<<i))
+					{
+						delta += Iqs316DebugInfo[i].Delta;
+					}
+			}
+		
+		history_delta_buf[history_delta_ptr++]=delta;
+		/*iir filter*/
+    capfilter -= ((capfilter - delta) >>3);
+
+		if(history_delta_ptr>=100)
+			{
+				history_delta_ptr=0;
+			}
+		
+    delta=0;
+
+		if(capfilter >= PM_CHK_MAX_THRESHOLD )	//|| delta > PM_CHK_MAX_THRESHOLD
 			{
 				rc = 1;
+				break;
 			}
+
+		if(prox_state)
+			{
+				continus = 1;
+				ScanProxChan();
+			}
+		else
+			{
+				break;
+			}
+
+			
+
+
+	}while(continus && cnt--);
+
+	
+
 
 		return rc;
 }
@@ -365,10 +443,10 @@ void IQS316_Settings(void)
 	/*
 	 set touch channal
 	*/
-	CommsIQSxxx_Write(CHAN_ACTIVE1, CHAN_ACTIVE0_DEF);			    
-	CommsIQSxxx_Write(CHAN_ACTIVE2, CHAN_ACTIVE0_DEF);			    
-	CommsIQSxxx_Write(CHAN_ACTIVE3, CHAN_ACTIVE0_DEF);			    
-	CommsIQSxxx_Write(CHAN_ACTIVE4, CHAN_ACTIVE0_DEF);			    
+	CommsIQSxxx_Write(CHAN_ACTIVE1, CHAN_ACTIVE1_DEF);			    
+	CommsIQSxxx_Write(CHAN_ACTIVE2, CHAN_ACTIVE2_DEF);			    
+	CommsIQSxxx_Write(CHAN_ACTIVE3, CHAN_ACTIVE3_DEF);			    
+	CommsIQSxxx_Write(CHAN_ACTIVE4, CHAN_ACTIVE4_DEF);			    
 	CommsIQSxxx_stop();
 
 
@@ -402,43 +480,43 @@ void IQS316_Settings(void)
 					temp_lta = CommsIQSxxx_Read(LTA_04_HI);
 					CommsIQSxxx_Write(LTA_04_HI, temp_lta | TOUCH_THRESHOLD_CH4);
 					temp_lta = CommsIQSxxx_Read(LTA_15_HI);
-					CommsIQSxxx_Write(LTA_15_HI, temp_lta | TOUCH_THRESHOLD_CH8);
+					CommsIQSxxx_Write(LTA_15_HI, temp_lta | TOUCH_THRESHOLD_CH5);
 					temp_lta = CommsIQSxxx_Read(LTA_26_HI);
-					CommsIQSxxx_Write(LTA_26_HI, temp_lta | TOUCH_THRESHOLD_CH12);
+					CommsIQSxxx_Write(LTA_26_HI, temp_lta | TOUCH_THRESHOLD_CH6);
 					temp_lta = CommsIQSxxx_Read(LTA_37_HI);
-					CommsIQSxxx_Write(LTA_37_HI, temp_lta | TOUCH_THRESHOLD_CH16);
+					CommsIQSxxx_Write(LTA_37_HI, temp_lta | TOUCH_THRESHOLD_CH7);
 					CommsIQSxxx_Write(ATI_MULT1, ATI_MULT1_GRP1);  
 				break;
 			case 2:		
 					temp_lta = CommsIQSxxx_Read(LTA_04_HI);
-					CommsIQSxxx_Write(LTA_04_HI, temp_lta | TOUCH_THRESHOLD_CH5);
+					CommsIQSxxx_Write(LTA_04_HI, temp_lta | TOUCH_THRESHOLD_CH8);
 					temp_lta = CommsIQSxxx_Read(LTA_15_HI);
 					CommsIQSxxx_Write(LTA_15_HI, temp_lta | TOUCH_THRESHOLD_CH9);
 					temp_lta = CommsIQSxxx_Read(LTA_26_HI);
-					CommsIQSxxx_Write(LTA_26_HI, temp_lta | TOUCH_THRESHOLD_CH13);
+					CommsIQSxxx_Write(LTA_26_HI, temp_lta | TOUCH_THRESHOLD_CH10);
 					temp_lta = CommsIQSxxx_Read(LTA_37_HI);
-					CommsIQSxxx_Write(LTA_37_HI, temp_lta | TOUCH_THRESHOLD_CH17);
+					CommsIQSxxx_Write(LTA_37_HI, temp_lta | TOUCH_THRESHOLD_CH11);
 					CommsIQSxxx_Write(ATI_MULT1, ATI_MULT1_GRP2);  
 				break;
 			case 3:
 					temp_lta = CommsIQSxxx_Read(LTA_04_HI);
-					CommsIQSxxx_Write(LTA_04_HI, temp_lta | TOUCH_THRESHOLD_CH6);
+					CommsIQSxxx_Write(LTA_04_HI, temp_lta | TOUCH_THRESHOLD_CH12);
 					temp_lta = CommsIQSxxx_Read(LTA_15_HI);
-					CommsIQSxxx_Write(LTA_15_HI, temp_lta | TOUCH_THRESHOLD_CH10);
+					CommsIQSxxx_Write(LTA_15_HI, temp_lta | TOUCH_THRESHOLD_CH13);
 					temp_lta = CommsIQSxxx_Read(LTA_26_HI);
 					CommsIQSxxx_Write(LTA_26_HI, temp_lta | TOUCH_THRESHOLD_CH14);
 					temp_lta = CommsIQSxxx_Read(LTA_37_HI);
-					CommsIQSxxx_Write(LTA_37_HI, temp_lta | TOUCH_THRESHOLD_CH18);
+					CommsIQSxxx_Write(LTA_37_HI, temp_lta | TOUCH_THRESHOLD_CH15);
 					CommsIQSxxx_Write(ATI_MULT1, ATI_MULT1_GRP3);  
 				break;
 				
 			case 4:
 					temp_lta = CommsIQSxxx_Read(LTA_04_HI);
-					CommsIQSxxx_Write(LTA_04_HI, temp_lta | TOUCH_THRESHOLD_CH7);
+					CommsIQSxxx_Write(LTA_04_HI, temp_lta | TOUCH_THRESHOLD_CH16);
 					temp_lta = CommsIQSxxx_Read(LTA_15_HI);
-					CommsIQSxxx_Write(LTA_15_HI, temp_lta | TOUCH_THRESHOLD_CH11);
+					CommsIQSxxx_Write(LTA_15_HI, temp_lta | TOUCH_THRESHOLD_CH17);
 					temp_lta = CommsIQSxxx_Read(LTA_26_HI);
-					CommsIQSxxx_Write(LTA_26_HI, temp_lta | TOUCH_THRESHOLD_CH15);
+					CommsIQSxxx_Write(LTA_26_HI, temp_lta | TOUCH_THRESHOLD_CH18);
 					temp_lta = CommsIQSxxx_Read(LTA_37_HI);
 					CommsIQSxxx_Write(LTA_37_HI, temp_lta | TOUCH_THRESHOLD_CH19);				
 					CommsIQSxxx_Write(ATI_MULT1, ATI_MULT1_GRP4);    			
@@ -666,10 +744,9 @@ skip_stop:
 			{
 			  if(0==prox_release)
 			  	{
-						if(ProxDetect())
+						if(ProxDetect(prox_detected))
 							{
 								IQS316.prox_detected = 1;
-								prox_chk_ok = 0;
 								setTouchMode();
 							}
 						else
